@@ -1,0 +1,10 @@
+{
+  "name": "@origami/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./tsconfig": "./tsconfig.base.json",
+    "./eslint": "./eslint-config/index.js",
+    "./prettier": "./prettier-config/index.js"
+  }
+}

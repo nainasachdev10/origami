@@ -1,0 +1,10 @@
+{
+  "name": "@origami/prettier-config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "peerDependencies": {
+    "prettier": "^3.2.0",
+    "prettier-plugin-tailwindcss": "^0.6.0"
+  }
+}
