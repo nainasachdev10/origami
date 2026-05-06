@@ -1,0 +1,13 @@
+{
+  "name": "scripts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test:e2e": "tsx test-e2e-x.ts"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5"
+  }
+}
