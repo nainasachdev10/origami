@@ -22,10 +22,8 @@ services:
       - key: N8N_PROTOCOL
         value: "https"
       - key: WEBHOOK_URL
-        fromService:
-          type: web
-          name: origami-n8n
-          property: url
+        sync: false
+        # Set to https://origami-n8n.onrender.com after deploy (or your custom domain)
       - key: DB_TYPE
         value: postgresdb
       - key: DB_POSTGRESDB_HOST
