@@ -17,34 +17,26 @@
     },
     {
       "id": "a1b2c3d4-0003-0003-0003-000000000002",
-      "name": "HTTP Request - Claude Script Writer",
+      "name": "HTTP Request - Gemini Script Writer",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [500, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $env.GOOGLE_API_KEY }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "content-type",
+              "name": "Content-Type",
               "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 2048,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Write an X (Twitter) post for topic: {{ $json.topic }}, angle: {{ $json.angle }}. Brand voice: {{ $json.brand_voice_prompt }}. Content style: {{ $json.content_style }}. For 'thread': numbered tweets (1/N format), each under 280 chars, 5-10 tweets. For 'short-form': single post under 280 chars. Return JSON: {platform:'x', format:'thread|single', script: string|string[], estimated_length: string}. Return ONLY valid JSON.\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\"text\": \"Write an X (Twitter) post for topic: {{ $json.topic }}, angle: {{ $json.angle }}. Brand voice: {{ $json.brand_voice_prompt }}. Content style: {{ $json.content_style }}. For 'thread': numbered tweets (1/N format), each under 280 chars, 5-10 tweets. For 'short-form': single post under 280 chars. Return JSON: {platform:'x', format:'thread|single', script: string|string[], estimated_length: string}. Return ONLY valid JSON.\"}]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048,\n    \"responseMimeType\": \"application/json\"\n  }\n}",
         "options": {
           "timeout": 30000
         }
@@ -57,7 +49,7 @@
       "typeVersion": 2,
       "position": [750, 300],
       "parameters": {
-        "jsCode": "const response = $input.item.json;\nconst rawText = response.content[0].text;\n\nlet parsed;\ntry {\n  parsed = JSON.parse(rawText);\n} catch (e) {\n  const stripped = rawText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  parsed = JSON.parse(stripped);\n}\n\nif (!parsed.script) {\n  throw new Error('Claude response missing script field: ' + rawText);\n}\n\nif (!parsed.platform || !parsed.format) {\n  throw new Error('Claude response missing platform or format field: ' + rawText);\n}\n\n// Enforce 280-char limit on each tweet if thread\nif (Array.isArray(parsed.script)) {\n  parsed.script = parsed.script.map((tweet, i) => {\n    if (typeof tweet !== 'string') throw new Error(`Thread tweet ${i} is not a string`);\n    return tweet.length > 280 ? tweet.substring(0, 277) + '...' : tweet;\n  });\n} else if (typeof parsed.script === 'string') {\n  if (parsed.script.length > 280 && parsed.format === 'single') {\n    parsed.script = parsed.script.substring(0, 277) + '...';\n  }\n} else {\n  throw new Error('script must be a string or array of strings');\n}\n\nconst trigger = $('Webhook').item.json;\n\nreturn [{\n  json: {\n    project_id: trigger.project_id,\n    topic: trigger.topic,\n    angle: trigger.angle,\n    platform: parsed.platform,\n    format: parsed.format,\n    script: parsed.script,\n    estimated_length: parsed.estimated_length || ''\n  }\n}];"
+        "jsCode": "const response = $input.item.json;\nlet rawText = response.candidates[0].content.parts[0].text;\n// Strip markdown code blocks if present\nrawText = rawText.replace(/^```(?:json)?\\n?/, '').replace(/\\n?```$/, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(rawText);\n} catch (e) {\n  throw new Error('Gemini returned invalid JSON: ' + rawText);\n}\n\nif (!parsed.script) {\n  throw new Error('Gemini response missing script field: ' + rawText);\n}\n\nif (!parsed.platform || !parsed.format) {\n  throw new Error('Gemini response missing platform or format field: ' + rawText);\n}\n\n// Enforce 280-char limit on each tweet if thread\nif (Array.isArray(parsed.script)) {\n  parsed.script = parsed.script.map((tweet, i) => {\n    if (typeof tweet !== 'string') throw new Error(`Thread tweet ${i} is not a string`);\n    return tweet.length > 280 ? tweet.substring(0, 277) + '...' : tweet;\n  });\n} else if (typeof parsed.script === 'string') {\n  if (parsed.script.length > 280 && parsed.format === 'single') {\n    parsed.script = parsed.script.substring(0, 277) + '...';\n  }\n} else {\n  throw new Error('script must be a string or array of strings');\n}\n\nconst trigger = $('Webhook').item.json;\n\nreturn [{\n  json: {\n    project_id: trigger.project_id,\n    topic: trigger.topic,\n    angle: trigger.angle,\n    platform: parsed.platform,\n    format: parsed.format,\n    script: parsed.script,\n    estimated_length: parsed.estimated_length || ''\n  }\n}];"
       }
     },
     {
@@ -157,14 +149,14 @@
       "main": [
         [
           {
-            "node": "HTTP Request - Claude Script Writer",
+            "node": "HTTP Request - Gemini Script Writer",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request - Claude Script Writer": {
+    "HTTP Request - Gemini Script Writer": {
       "main": [
         [
           {

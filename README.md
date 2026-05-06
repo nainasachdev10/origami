@@ -17,13 +17,13 @@ You now have a complete X (Twitter) publishing pipeline that:
 - **Trend Research Service**: Python FastAPI that pulls trends from Google Trends, Reddit, YouTube, and Nitter RSS every 6 hours
 - **n8n Orchestration**: Visual workflow pipeline that:
   1. Researches trends daily
-  2. Asks Claude to pick the best topic for your niche
+  2. Asks Gemini to pick the best topic for your niche
   3. Generates platform-specific scripts
   4. Reviews quality against your brand voice
   5. Sends preview to Telegram for approval
   6. Publishes to X
 - **Telegram Bot**: Inline keyboard interface to approve/reject content before posting
-- **Shared Library**: TypeScript types that match the Supabase schema, plus reusable Claude prompts for all agent tasks
+- **Shared Library**: TypeScript types that match the Supabase schema, plus reusable prompts for all agent tasks (compatible with both Gemini and Claude)
 
 ## Architecture
 
@@ -165,8 +165,8 @@ Deploy to Vercel (free tier, unlimited bandwidth):
 
 | Variable | Type | Where to get it | Used by |
 |----------|------|-----------------|---------|
-| **Anthropic** | | | |
-| `ANTHROPIC_API_KEY` | string | https://console.anthropic.com/keys | n8n, trend-research |
+| **Google Gemini** | | | |
+| `GOOGLE_API_KEY` | string | https://ai.google.dev (free tier, no credit card) | n8n workflows |
 | **Supabase** | | | |
 | `NEXT_PUBLIC_SUPABASE_URL` | string | Supabase Dashboard > Settings > API | dashboard, n8n |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | string | Supabase Dashboard > Settings > API | dashboard |
@@ -194,14 +194,14 @@ To run Phase 1 end-to-end, create these accounts (all have free tiers):
 
 - [ ] **Supabase** — https://supabase.com (free project, unlimited reads/writes within quotas)
 - [ ] **Vercel** — https://vercel.com (deploy dashboard for free)
-- [ ] **Anthropic API** — https://console.anthropic.com/keys (pay-as-you-go; budget ~$0.20/day with caching)
+- [ ] **Google Gemini API** — https://ai.google.dev (free tier: 15 RPM, 1M tokens/day, no credit card required)
 - [ ] **Telegram Bot** — Message @BotFather on Telegram, send `/newbot`, get your token
 - [ ] **Reddit API** — https://www.reddit.com/prefs/apps (create a personal-use app, free) — OPTIONAL, skipped gracefully if not set
 - [ ] **X Developer account** — https://developer.twitter.com (free tier). Create an app, then go to Keys and Tokens to get your `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, and `X_ACCESS_TOKEN_SECRET`. The free tier allows posting tweets.
 - [ ] **Render** — https://render.com (free tier for n8n + Postgres)
 - [ ] **X / Twitter account** — the one you want to post to (already have? set it aside for testing)
 
-**Total Phase 1 monthly cost:** ~$0-15/month (Anthropic API token usage only; X API is free tier).
+**Total Phase 1 monthly cost:** $0/month (Google Gemini free tier + X API free tier).
 
 ## Phase roadmap
 

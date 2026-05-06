@@ -62,34 +62,26 @@
     },
     {
       "id": "a1b2c3d4-0002-0002-0002-000000000003",
-      "name": "HTTP Request - Claude Topic Selector",
+      "name": "HTTP Request - Gemini Topic Selector",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [750, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $env.GOOGLE_API_KEY }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "content-type",
+              "name": "Content-Type",
               "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are a topic selection agent for the niche: {{ JSON.stringify($('Webhook').item.json.niche_keywords) }}. Given these trending topics: {{ JSON.stringify($('Webhook').item.json.trend_data) }}. Recent topics to avoid: {{ JSON.stringify($('HTTP Request - Get Recent Topics').all().map(i => i.json.topic)) }}. Return JSON array: [{topic, angle, target_platform, reasoning}]. Return ONLY valid JSON, no other text.\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\"text\": \"You are a topic selection agent for the niche: {{ JSON.stringify($('Webhook').item.json.niche_keywords) }}. Given these trending topics: {{ JSON.stringify($('Webhook').item.json.trend_data) }}. Recent topics to avoid: {{ JSON.stringify($('HTTP Request - Get Recent Topics').all().map(i => i.json.topic)) }}. Return JSON array: [{topic, angle, target_platform, reasoning}]. Return ONLY valid JSON, no other text.\"}]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 1024,\n    \"responseMimeType\": \"application/json\"\n  }\n}",
         "options": {
           "timeout": 30000
         }
@@ -102,7 +94,7 @@
       "typeVersion": 2,
       "position": [1000, 300],
       "parameters": {
-        "jsCode": "const text = items[0].json.content[0].text;\n\nlet topics;\ntry {\n  topics = JSON.parse(text);\n} catch (e) {\n  // Strip markdown fences if present\n  const stripped = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(stripped);\n}\n\nif (!Array.isArray(topics) || topics.length === 0) {\n  throw new Error('Claude returned empty or invalid topics array: ' + text);\n}\n\nfor (const t of topics) {\n  if (!t.topic || !t.angle || !t.target_platform) {\n    throw new Error('Topic object missing required fields: ' + JSON.stringify(t));\n  }\n}\n\nreturn topics.map(t => ({ json: t }));"
+        "jsCode": "let text = items[0].json.candidates[0].content.parts[0].text;\n// Strip markdown code blocks if present\ntext = text.replace(/^```(?:json)?\\n?/, '').replace(/\\n?```$/, '').trim();\n\nlet topics;\ntry {\n  topics = JSON.parse(text);\n} catch (e) {\n  throw new Error('Gemini returned invalid JSON: ' + text);\n}\n\nif (!Array.isArray(topics) || topics.length === 0) {\n  throw new Error('Gemini returned empty or invalid topics array: ' + text);\n}\n\nfor (const t of topics) {\n  if (!t.topic || !t.angle || !t.target_platform) {\n    throw new Error('Topic object missing required fields: ' + JSON.stringify(t));\n  }\n}\n\nreturn topics.map(t => ({ json: t }));"
       }
     },
     {
@@ -162,14 +154,14 @@
       "main": [
         [
           {
-            "node": "HTTP Request - Claude Topic Selector",
+            "node": "HTTP Request - Gemini Topic Selector",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request - Claude Topic Selector": {
+    "HTTP Request - Gemini Topic Selector": {
       "main": [
         [
           {

@@ -17,34 +17,26 @@
     },
     {
       "id": "a1b2c3d4-0004-0004-0004-000000000002",
-      "name": "HTTP Request - Claude Quality Review",
+      "name": "HTTP Request - Gemini Quality Review",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [500, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $env.GOOGLE_API_KEY }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "content-type",
+              "name": "Content-Type",
               "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Review this content for quality. Topic: {{ $json.topic }}. Script: {{ typeof $json.script === 'string' ? $json.script : JSON.stringify($json.script) }}. Brand voice: {{ $json.brand_voice_prompt }}. Platform: {{ $json.platform }}. Check: brand voice match, factual claims, platform policy, format. Return JSON: {passed: boolean, score: number, issues: [{type, severity, description}], suggestions: string[]}. Only fail (passed:false) on 'block' severity issues.\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\"text\": \"Review this content for quality. Topic: {{ $json.topic }}. Script: {{ typeof $json.script === 'string' ? $json.script : JSON.stringify($json.script) }}. Brand voice: {{ $json.brand_voice_prompt }}. Platform: {{ $json.platform }}. Check: brand voice match, factual claims, platform policy, format. Return JSON: {passed: boolean, score: number, issues: [{type, severity, description}], suggestions: string[]}. Only fail (passed:false) on 'block' severity issues.\"}]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 1024,\n    \"responseMimeType\": \"application/json\"\n  }\n}",
         "options": {
           "timeout": 30000
         }
@@ -57,7 +49,7 @@
       "typeVersion": 2,
       "position": [750, 300],
       "parameters": {
-        "jsCode": "const response = $input.item.json;\nconst rawText = response.content[0].text;\n\nlet review;\ntry {\n  review = JSON.parse(rawText);\n} catch (e) {\n  const stripped = rawText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  review = JSON.parse(stripped);\n}\n\nif (typeof review.passed !== 'boolean') {\n  throw new Error('Review response missing boolean passed field: ' + rawText);\n}\n\nconst trigger = $('Webhook').item.json;\n\nreturn [{\n  json: {\n    content_piece_id: trigger.content_piece_id,\n    project_id: trigger.project_id,\n    passed: review.passed,\n    score: review.score || 0,\n    issues: review.issues || [],\n    suggestions: review.suggestions || []\n  }\n}];"
+        "jsCode": "const response = $input.item.json;\nlet rawText = response.candidates[0].content.parts[0].text;\n// Strip markdown code blocks if present\nrawText = rawText.replace(/^```(?:json)?\\n?/, '').replace(/\\n?```$/, '').trim();\n\nlet review;\ntry {\n  review = JSON.parse(rawText);\n} catch (e) {\n  throw new Error('Gemini returned invalid JSON: ' + rawText);\n}\n\nif (typeof review.passed !== 'boolean') {\n  throw new Error('Review response missing boolean passed field: ' + rawText);\n}\n\nconst trigger = $('Webhook').item.json;\n\nreturn [{\n  json: {\n    content_piece_id: trigger.content_piece_id,\n    project_id: trigger.project_id,\n    passed: review.passed,\n    score: review.score || 0,\n    issues: review.issues || [],\n    suggestions: review.suggestions || []\n  }\n}];"
       }
     },
     {
@@ -243,14 +235,14 @@
       "main": [
         [
           {
-            "node": "HTTP Request - Claude Quality Review",
+            "node": "HTTP Request - Gemini Quality Review",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request - Claude Quality Review": {
+    "HTTP Request - Gemini Quality Review": {
       "main": [
         [
           {

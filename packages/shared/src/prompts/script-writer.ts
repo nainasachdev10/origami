@@ -1,7 +1,7 @@
 /**
  * packages/shared/src/prompts/script-writer.ts
  *
- * Builds the system prompt for the script-writing Claude agent (pipeline step 3a).
+ * Builds the prompt for the script-writing agent (pipeline step 3a).
  *
  * Handles all platform × content-style combinations defined in the project spec:
  *   - x + thread       → numbered tweet thread (1/n format, 5-10 tweets, ≤280 chars each)
@@ -11,7 +11,10 @@
  *   - instagram + short-form → reel script (visual cues + voiceover)
  *   - instagram + carousel  → slide-by-slide (title card + 4-7 content slides + CTA slide)
  *
- * Model used: claude-sonnet-4-20250514
+ * Provider compatibility: works with both Google Gemini (gemini-1.5-flash) and
+ * Anthropic Claude (claude-sonnet-*) — the returned string is the full prompt
+ * text; wrap it in the appropriate API request body for whichever provider is
+ * in use. Current provider: Google Gemini (free tier).
  *
  * @example
  * ```ts

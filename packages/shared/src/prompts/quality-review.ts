@@ -1,7 +1,7 @@
 /**
  * packages/shared/src/prompts/quality-review.ts
  *
- * Builds the system prompt for the quality-review Claude agent (pipeline step 4).
+ * Builds the prompt for the quality-review agent (pipeline step 4).
  *
  * The agent reads everything generated in step 3 (script, caption, hashtags)
  * and validates it against four dimensions before the content moves to the
@@ -16,7 +16,10 @@
  * The pipeline retries generation up to 2 times on failure; after that the
  * content_piece is marked `status = "failed"`.
  *
- * Model used: claude-sonnet-4-20250514
+ * Provider compatibility: works with both Google Gemini (gemini-1.5-flash) and
+ * Anthropic Claude (claude-sonnet-*) — the returned string is the full prompt
+ * text; wrap it in the appropriate API request body for whichever provider is
+ * in use. Current provider: Google Gemini (free tier).
  *
  * @example
  * ```ts

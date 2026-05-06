@@ -46,7 +46,7 @@ services:
         fromDatabase:
           name: origami-n8n-db
           property: password
-      - key: ANTHROPIC_API_KEY
+      - key: GOOGLE_API_KEY
         sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false

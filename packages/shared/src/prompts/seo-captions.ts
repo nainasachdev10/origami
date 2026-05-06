@@ -1,7 +1,7 @@
 /**
  * packages/shared/src/prompts/seo-captions.ts
  *
- * Builds the system prompt for the SEO + captions Claude agent (pipeline step 3c).
+ * Builds the prompt for the SEO + captions agent (pipeline step 3c).
  *
  * The agent generates all metadata required to maximise discoverability and
  * click-through rate on each platform:
@@ -11,7 +11,10 @@
  *   - Hashtags (quantity varies per platform)
  *   - YouTube only: 150-200 word description with timestamp markers + up to 15 tags
  *
- * Model used: claude-sonnet-4-20250514
+ * Provider compatibility: works with both Google Gemini (gemini-1.5-flash) and
+ * Anthropic Claude (claude-sonnet-*) — the returned string is the full prompt
+ * text; wrap it in the appropriate API request body for whichever provider is
+ * in use. Current provider: Google Gemini (free tier).
  *
  * @example
  * ```ts

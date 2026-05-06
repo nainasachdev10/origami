@@ -1,12 +1,15 @@
 /**
  * packages/shared/src/prompts/topic-selector.ts
  *
- * Builds the system prompt for the topic-selection Claude agent (pipeline step 2).
+ * Builds the prompt for the topic-selection agent (pipeline step 2).
  *
  * The agent receives trend data, recent topics (to avoid duplication), and
  * historical top performers, then returns 1-3 topic objects as a JSON array.
  *
- * Model used: claude-sonnet-4-20250514
+ * Provider compatibility: works with both Google Gemini (gemini-1.5-flash) and
+ * Anthropic Claude (claude-sonnet-*) — the returned string is the full prompt
+ * text; wrap it in the appropriate API request body for whichever provider is
+ * in use. Current provider: Google Gemini (free tier).
  *
  * @example
  * ```ts

@@ -268,6 +268,24 @@ For Phase 1, credentials are stored in Supabase (encrypted at rest). Phase 2+ sh
 
 ---
 
+## 16. Switched LLM from Anthropic Claude to Google Gemini for Phase 1
+
+**Decision:** Use `gemini-1.5-flash` via Google's Generative Language API instead of `claude-sonnet-4-20250514`.
+
+**Why:** Google Gemini offers a free tier (15 RPM, 1M tokens/day, no credit card) that's sufficient for Phase 1 testing and MVP launch. Anthropic requires payment from the first call.
+
+**Trade-offs:**
+- Zero cost for Phase 1 testing and MVP
+- Generous free tier (15 RPM, 1M tokens/day)
+- Lower quality than Claude Sonnet for nuanced creative writing
+- More variable JSON output (Gemini sometimes wraps JSON in markdown code blocks)
+
+**How to reverse:** Replace Gemini URLs with `https://api.anthropic.com/v1/messages`, change request body back to Anthropic format (`model`, `max_tokens`, `messages` fields), update env var to `ANTHROPIC_API_KEY`. The system prompts (in `packages/shared/src/prompts/`) work with both providers without modification.
+
+**When to switch back:** When ready to ship to real users, or if Gemini hits rate limits, or if quality issues emerge in topic selection / script writing.
+
+---
+
 ## Summary of design trade-offs
 
 | Component | Decision | Trade-off |
@@ -285,5 +303,6 @@ For Phase 1, credentials are stored in Supabase (encrypted at rest). Phase 2+ sh
 | Analytics | Once daily | Old data; sufficient for learning loop |
 | Content | Immutable rows | More storage; full audit trail |
 | Workflows | JSON in git | Manual export; version control + code review |
+| LLM provider | Google Gemini (free) | Lower quality than Claude; zero cost for MVP |
 
 All decisions optimize for Phase 1 speed and simplicity. Phase 2+ may revisit (e.g., move to a secrets manager, add real-time analytics, auto-generate types).
