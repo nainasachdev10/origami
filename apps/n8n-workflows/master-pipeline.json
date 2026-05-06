@@ -1,0 +1,758 @@
+{
+  "name": "Master Pipeline — X Bot (Phase 1)",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-9999-0001-0001-000000000001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0002-0002-000000000002",
+      "name": "HTTP Request - Get Active Projects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/projects",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "active",
+              "value": "eq.true"
+            },
+            {
+              "name": "select",
+              "value": "id,niche_keywords,brand_voice_prompt,content_style,posting_schedule,approval_mode"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0003-0003-000000000003",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [750, 300],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0004-0004-000000000004",
+      "name": "Execute Workflow - Trend Research",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1000, 300],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_01_ID",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            {
+              "name": "project_id",
+              "stringValue": "={{ $json.id }}"
+            },
+            {
+              "name": "niche_keywords",
+              "stringValue": "={{ $json.niche_keywords }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0005-0005-000000000005",
+      "name": "Execute Workflow - Topic Selector",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1250, 300],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_02_ID",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            {
+              "name": "project_id",
+              "stringValue": "={{ $json.project_id }}"
+            },
+            {
+              "name": "trend_data",
+              "stringValue": "={{ $json.trend_data }}"
+            },
+            {
+              "name": "niche_keywords",
+              "stringValue": "={{ $json.niche_keywords }}"
+            },
+            {
+              "name": "brand_voice_prompt",
+              "stringValue": "={{ $('Split In Batches').item.json.brand_voice_prompt }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0006-0006-000000000006",
+      "name": "Split In Batches - Topics",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1500, 300],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-00a0-00a0-0000000000a0",
+      "name": "Prepare Topic Item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 480],
+      "parameters": {
+        "jsCode": "// topics comes from topic selector as an array; splitInBatches feeds one at a time\nconst topic = $input.item.json;\nconst project = $('Split In Batches').item.json;\n\nreturn [{\n  json: {\n    project_id: topic.project_id || project.id,\n    topic: topic.topic,\n    angle: topic.angle,\n    brand_voice_prompt: project.brand_voice_prompt,\n    content_style: project.content_style,\n    approval_mode: project.approval_mode\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0007-0007-000000000007",
+      "name": "Execute Workflow - Script Writer X",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1750, 300],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_03_ID",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            {
+              "name": "project_id",
+              "stringValue": "={{ $json.project_id }}"
+            },
+            {
+              "name": "topic",
+              "stringValue": "={{ $json.topic }}"
+            },
+            {
+              "name": "angle",
+              "stringValue": "={{ $json.angle }}"
+            },
+            {
+              "name": "brand_voice_prompt",
+              "stringValue": "={{ $json.brand_voice_prompt }}"
+            },
+            {
+              "name": "content_style",
+              "stringValue": "={{ $json.content_style }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0008-0008-000000000008",
+      "name": "Execute Workflow - Quality Review",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2000, 300],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_04_ID",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            {
+              "name": "project_id",
+              "stringValue": "={{ $('Prepare Topic Item').item.json.project_id }}"
+            },
+            {
+              "name": "content_piece_id",
+              "stringValue": "={{ $json.content_piece_id }}"
+            },
+            {
+              "name": "topic",
+              "stringValue": "={{ $('Prepare Topic Item').item.json.topic }}"
+            },
+            {
+              "name": "script",
+              "stringValue": "={{ $json.script }}"
+            },
+            {
+              "name": "brand_voice_prompt",
+              "stringValue": "={{ $('Prepare Topic Item').item.json.brand_voice_prompt }}"
+            },
+            {
+              "name": "platform",
+              "stringValue": "x"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0009-0009-000000000009",
+      "name": "IF - Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2250, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.passed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0010-0010-000000000010",
+      "name": "IF - Approval Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2500, 200],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-02",
+              "leftValue": "={{ $('Prepare Topic Item').item.json.approval_mode }}",
+              "rightValue": "manual",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0011-0011-000000000011",
+      "name": "Execute Workflow - Telegram Approval",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2750, 150],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_05_ID",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            {
+              "name": "content_piece_id",
+              "stringValue": "={{ $('Execute Workflow - Quality Review').item.json.content_piece_id }}"
+            },
+            {
+              "name": "project_id",
+              "stringValue": "={{ $('Prepare Topic Item').item.json.project_id }}"
+            },
+            {
+              "name": "topic",
+              "stringValue": "={{ $('Prepare Topic Item').item.json.topic }}"
+            },
+            {
+              "name": "script",
+              "stringValue": "={{ $('Execute Workflow - Script Writer X').item.json.script }}"
+            },
+            {
+              "name": "scheduled_for",
+              "stringValue": "={{ $now }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0012-0012-000000000012",
+      "name": "HTTP Request - Auto Approve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2750, 250],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/content_pieces",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Execute Workflow - Quality Review').item.json.content_piece_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"approved\"}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0013-0013-000000000013",
+      "name": "IF - Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3000, 200],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-03",
+              "leftValue": "={{ $json.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0014-0014-000000000014",
+      "name": "Execute Workflow - Publish X",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [3250, 150],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_06_ID",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "fields": {
+          "values": [
+            {
+              "name": "content_piece_id",
+              "stringValue": "={{ $('Execute Workflow - Quality Review').item.json.content_piece_id }}"
+            },
+            {
+              "name": "script",
+              "stringValue": "={{ $('Execute Workflow - Script Writer X').item.json.script }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0015-0015-000000000015",
+      "name": "HTTP Request - Mark Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3250, 250],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/content_pieces",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Execute Workflow - Quality Review').item.json.content_piece_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"rejected\"}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0016-0016-000000000016",
+      "name": "HTTP Request - Notify Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2500, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_DEFAULT_CHAT_ID }}\",\n  \"parse_mode\": \"Markdown\",\n  \"text\": \"*Pipeline Failure*\\n\\nQuality review failed for content piece `{{ $('Execute Workflow - Quality Review').item.json.content_piece_id }}`.\\n\\n*Topic:* {{ $('Prepare Topic Item').item.json.topic }}\\n*Issues:* {{ Array.isArray($('Execute Workflow - Quality Review').item.json.issues) ? $('Execute Workflow - Quality Review').item.json.issues.map(i => typeof i === 'object' ? i.description : i).join(', ') : 'Unknown' }}\\n\\nThe content piece has been marked as *failed* in Supabase.\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-0017-0017-000000000017",
+      "name": "No Operation - Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [3500, 300],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Active Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Active Projects": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Trend Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow - Trend Research": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Topic Selector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow - Topic Selector": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches - Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches - Topics": {
+      "main": [
+        [
+          {
+            "node": "Prepare Topic Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Topic Item": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Script Writer X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow - Script Writer X": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Quality Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow - Quality Review": {
+      "main": [
+        [
+          {
+            "node": "IF - Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Passed?": {
+      "main": [
+        [
+          {
+            "node": "IF - Approval Mode",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Notify Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Approval Mode": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Telegram Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Auto Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow - Telegram Approval": {
+      "main": [
+        [
+          {
+            "node": "IF - Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Auto Approve": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Publish X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Approved?": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow - Publish X",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Mark Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow - Publish X": {
+      "main": [
+        [
+          {
+            "node": "No Operation - Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Mark Rejected": {
+      "main": [
+        [
+          {
+            "node": "No Operation - Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Notify Failure": {
+      "main": [
+        [
+          {
+            "node": "No Operation - Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "1",
+  "tags": ["phase-1", "x-bot", "orchestrator"]
+}

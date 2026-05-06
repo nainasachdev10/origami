@@ -1,0 +1,331 @@
+{
+  "name": "06 — Publish to X",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "publish-x-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publish-x",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000002",
+      "name": "Code - Detect Thread",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300],
+      "parameters": {
+        "jsCode": "const payload = $input.item.json;\nconst script = payload.script;\n\n// A thread is represented as an array of tweet strings.\n// A single post is a plain string.\n// Handle the case where script was stored as JSON string (serialised array).\nlet resolvedScript = script;\nif (typeof script === 'string') {\n  try {\n    const parsed = JSON.parse(script);\n    if (Array.isArray(parsed)) {\n      resolvedScript = parsed;\n    }\n  } catch (_) {\n    // Remains a plain string\n  }\n}\n\nconst isThread = Array.isArray(resolvedScript);\n\nreturn [{\n  json: {\n    content_piece_id: payload.content_piece_id,\n    script: resolvedScript,\n    isThread\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000003",
+      "name": "IF - Is Thread?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.isThread }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000004",
+      "name": "HTTP Request - Post Thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENTWEET_BASE_URL }}/thread",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENTWEET_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"tweets\": {{ JSON.stringify($json.script) }} }",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000005",
+      "name": "HTTP Request - Post Tweet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENTWEET_BASE_URL }}/tweet",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENTWEET_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"text\": {{ JSON.stringify($json.script) }} }",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1250, 300],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "input1"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000007",
+      "name": "HTTP Request - Update Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/content_pieces",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Code - Detect Thread').item.json.content_piece_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"published\",\n  \"published_at\": \"{{ new Date().toISOString() }}\",\n  \"platforms_published\": {{ JSON.stringify({ x: String($json.id || $json.thread_id || ($json.tweets && $json.tweets[0] && $json.tweets[0].id) || '') }) }}\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000008",
+      "name": "Set - Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1750, 300],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "out-01",
+              "name": "content_piece_id",
+              "value": "={{ $('Code - Detect Thread').item.json.content_piece_id }}",
+              "type": "string"
+            },
+            {
+              "id": "out-02",
+              "name": "tweet_id",
+              "value": "={{ String($('Merge').item.json.id || $('Merge').item.json.thread_id || '') }}",
+              "type": "string"
+            },
+            {
+              "id": "out-03",
+              "name": "published_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000009",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2000, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code - Detect Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Detect Thread": {
+      "main": [
+        [
+          {
+            "node": "IF - Is Thread?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Is Thread?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Post Thread",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request - Post Tweet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Post Thread": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Post Tweet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Update Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Update Supabase": {
+      "main": [
+        [
+          {
+            "node": "Set - Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "1",
+  "tags": ["phase-1", "x-bot"]
+}

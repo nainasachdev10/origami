@@ -1,0 +1,215 @@
+{
+  "name": "02 — Topic Selector",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "topic-selector-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "topic-selector",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "HTTP Request - Get Recent Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/content_pieces",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "project_id",
+              "value": "=eq.{{ $json.project_id }}"
+            },
+            {
+              "name": "select",
+              "value": "topic"
+            },
+            {
+              "name": "created_at",
+              "value": "=gte.{{ new Date(Date.now()-7*24*60*60*1000).toISOString() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000003",
+      "name": "HTTP Request - Claude Topic Selector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are a topic selection agent for the niche: {{ JSON.stringify($('Webhook').item.json.niche_keywords) }}. Given these trending topics: {{ JSON.stringify($('Webhook').item.json.trend_data) }}. Recent topics to avoid: {{ JSON.stringify($('HTTP Request - Get Recent Topics').all().map(i => i.json.topic)) }}. Return JSON array: [{topic, angle, target_platform, reasoning}]. Return ONLY valid JSON, no other text.\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000004",
+      "name": "Code - Parse Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300],
+      "parameters": {
+        "jsCode": "const text = items[0].json.content[0].text;\n\nlet topics;\ntry {\n  topics = JSON.parse(text);\n} catch (e) {\n  // Strip markdown fences if present\n  const stripped = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(stripped);\n}\n\nif (!Array.isArray(topics) || topics.length === 0) {\n  throw new Error('Claude returned empty or invalid topics array: ' + text);\n}\n\nfor (const t of topics) {\n  if (!t.topic || !t.angle || !t.target_platform) {\n    throw new Error('Topic object missing required fields: ' + JSON.stringify(t));\n  }\n}\n\nreturn topics.map(t => ({ json: t }));"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000005",
+      "name": "Set - Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1250, 300],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "out-01",
+              "name": "project_id",
+              "value": "={{ $('Webhook').item.json.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "out-02",
+              "name": "topics",
+              "value": "={{ $('Code - Parse Topics').all().map(i => i.json) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000006",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1500, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Recent Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Recent Topics": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Claude Topic Selector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Claude Topic Selector": {
+      "main": [
+        [
+          {
+            "node": "Code - Parse Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Parse Topics": {
+      "main": [
+        [
+          {
+            "node": "Set - Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "1",
+  "tags": ["phase-1", "x-bot"]
+}
