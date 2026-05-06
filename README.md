@@ -175,10 +175,13 @@ Deploy to Vercel (free tier, unlimited bandwidth):
 | `TELEGRAM_BOT_TOKEN` | string | @BotFather on Telegram (send `/newbot`) | n8n approval gate |
 | `TELEGRAM_DEFAULT_CHAT_ID` | string | Send a message to your bot, then GET `https://api.telegram.org/bot<TOKEN>/getUpdates` → look for `chat.id` | n8n notifications |
 | **X / Twitter** | | | |
-| `OPENTWEET_API_KEY` | string | https://opentweet.io/pricing ($5.99/mo) | n8n publishing |
+| `X_API_KEY` | string | https://developer.twitter.com → Create App → Keys and Tokens (free tier) | n8n publishing |
+| `X_API_SECRET` | string | Same X Developer App | n8n publishing |
+| `X_ACCESS_TOKEN` | string | Same X Developer App → Keys and Tokens | n8n publishing |
+| `X_ACCESS_TOKEN_SECRET` | string | Same X Developer App → Keys and Tokens | n8n publishing |
 | **Trend sources** | | | |
-| `REDDIT_CLIENT_ID` | string | https://www.reddit.com/prefs/apps → Create app → personal use script | trend-research |
-| `REDDIT_CLIENT_SECRET` | string | Same Reddit app | trend-research |
+| `REDDIT_CLIENT_ID` | string (optional) | https://www.reddit.com/prefs/apps → Create app → personal use script | trend-research (skipped if not set) |
+| `REDDIT_CLIENT_SECRET` | string (optional) | Same Reddit app | trend-research (skipped if not set) |
 | **Trend research service** | | | |
 | `TREND_RESEARCH_SERVICE_URL` | string | URL where you deployed packages/trend-research | n8n, dashboard |
 | **Optional** | | | |
@@ -193,12 +196,12 @@ To run Phase 1 end-to-end, create these accounts (all have free tiers):
 - [ ] **Vercel** — https://vercel.com (deploy dashboard for free)
 - [ ] **Anthropic API** — https://console.anthropic.com/keys (pay-as-you-go; budget ~$0.20/day with caching)
 - [ ] **Telegram Bot** — Message @BotFather on Telegram, send `/newbot`, get your token
-- [ ] **Reddit API** — https://www.reddit.com/prefs/apps (create a personal-use app, free)
-- [ ] **OpenTweet API** — https://opentweet.io/pricing ($5.99/mo for X posting)
+- [ ] **Reddit API** — https://www.reddit.com/prefs/apps (create a personal-use app, free) — OPTIONAL, skipped gracefully if not set
+- [ ] **X Developer account** — https://developer.twitter.com (free tier). Create an app, then go to Keys and Tokens to get your `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, and `X_ACCESS_TOKEN_SECRET`. The free tier allows posting tweets.
 - [ ] **Render** — https://render.com (free tier for n8n + Postgres)
 - [ ] **X / Twitter account** — the one you want to post to (already have? set it aside for testing)
 
-**Total Phase 1 monthly cost:** ~$6-20/month (mostly Anthropic API token usage + OpenTweet subscription).
+**Total Phase 1 monthly cost:** ~$0-15/month (Anthropic API token usage only; X API is free tier).
 
 ## Phase roadmap
 

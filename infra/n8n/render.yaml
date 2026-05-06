@@ -54,18 +54,24 @@ services:
         sync: false
       - key: TELEGRAM_DEFAULT_CHAT_ID
         sync: false
-      - key: OPENTWEET_API_KEY
+      - key: X_API_KEY
         sync: false
-      - key: OPENTWEET_BASE_URL
-        value: "https://api.opentweet.io/v1"
+      - key: X_API_SECRET
+        sync: false
+      - key: X_ACCESS_TOKEN
+        sync: false
+      - key: X_ACCESS_TOKEN_SECRET
+        sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: TREND_RESEARCH_URL
         sync: false
+      # Optional - Reddit source skipped if not set
       - key: REDDIT_CLIENT_ID
         sync: false
+      # Optional - Reddit source skipped if not set
       - key: REDDIT_CLIENT_SECRET
         sync: false
 

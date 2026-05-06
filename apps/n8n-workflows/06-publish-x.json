@@ -56,64 +56,22 @@
     },
     {
       "id": "a1b2c3d4-0006-0006-0006-000000000004",
-      "name": "HTTP Request - Post Thread",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Code - Post Thread",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1000, 200],
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.OPENTWEET_BASE_URL }}/thread",
-        "authentication": "none",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENTWEET_API_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"tweets\": {{ JSON.stringify($json.script) }} }",
-        "options": {
-          "timeout": 30000
-        }
+        "jsCode": "// X API v2 — post a thread via OAuth 1.0a\n// Env vars: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET\n\nconst crypto = require('crypto');\n\nconst credentials = {\n  apiKey: $env.X_API_KEY,\n  apiSecret: $env.X_API_SECRET,\n  accessToken: $env.X_ACCESS_TOKEN,\n  accessTokenSecret: $env.X_ACCESS_TOKEN_SECRET,\n};\n\nconst tweets = $input.item.json.script; // array of strings\nconst X_TWEETS_URL = 'https://api.twitter.com/2/tweets';\n\nfunction percentEncode(value) {\n  return encodeURIComponent(value)\n    .replace(/!/g, '%21')\n    .replace(/'/g, '%27')\n    .replace(/\\(/g, '%28')\n    .replace(/\\)/g, '%29')\n    .replace(/\\*/g, '%2A');\n}\n\nfunction generateNonce() {\n  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';\n  let nonce = '';\n  for (let i = 0; i < 32; i++) {\n    nonce += chars.charAt(Math.floor(Math.random() * chars.length));\n  }\n  return nonce;\n}\n\nfunction buildAuthHeader(method, url, creds) {\n  const nonce = generateNonce();\n  const timestamp = Math.floor(Date.now() / 1000).toString();\n\n  const oauthParams = {\n    oauth_consumer_key: creds.apiKey,\n    oauth_nonce: nonce,\n    oauth_signature_method: 'HMAC-SHA1',\n    oauth_timestamp: timestamp,\n    oauth_token: creds.accessToken,\n    oauth_version: '1.0',\n  };\n\n  const paramString = Object.keys(oauthParams)\n    .sort()\n    .map(k => `${percentEncode(k)}=${percentEncode(oauthParams[k])}`)\n    .join('&');\n\n  const signatureBase = [\n    method.toUpperCase(),\n    percentEncode(url),\n    percentEncode(paramString),\n  ].join('&');\n\n  const signingKey = `${percentEncode(creds.apiSecret)}&${percentEncode(creds.accessTokenSecret)}`;\n\n  const signature = crypto\n    .createHmac('sha1', signingKey)\n    .update(signatureBase)\n    .digest('base64');\n\n  const allOAuth = { ...oauthParams, oauth_signature: signature };\n\n  return 'OAuth ' + Object.keys(allOAuth)\n    .sort()\n    .map(k => `${k}=\"${percentEncode(allOAuth[k])}\"`)\n    .join(', ');\n}\n\nasync function postTweet(text, replyToId) {\n  const body = { text };\n  if (replyToId) {\n    body.reply = { in_reply_to_tweet_id: replyToId };\n  }\n\n  const authHeader = buildAuthHeader('POST', X_TWEETS_URL, credentials);\n\n  const response = await fetch(X_TWEETS_URL, {\n    method: 'POST',\n    headers: {\n      'Authorization': authHeader,\n      'Content-Type': 'application/json',\n    },\n    body: JSON.stringify(body),\n  });\n\n  const data = await response.json();\n\n  if (!response.ok) {\n    const msg = (data.errors && data.errors[0] && data.errors[0].message)\n      || data.detail\n      || data.title\n      || `X API error ${response.status}`;\n    throw new Error(msg);\n  }\n\n  return { id: data.data.id, text: data.data.text };\n}\n\n// Post tweets sequentially, each as a reply to the previous\nconst results = [];\nlet previousId = null;\n\nfor (const text of tweets) {\n  const result = await postTweet(text, previousId);\n  results.push(result);\n  previousId = result.id;\n}\n\nreturn [{\n  json: {\n    tweets: results,\n    id: results[0].id,\n    thread_id: results[0].id,\n  }\n}];"
       }
     },
     {
       "id": "a1b2c3d4-0006-0006-0006-000000000005",
-      "name": "HTTP Request - Post Tweet",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Code - Post Tweet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1000, 400],
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.OPENTWEET_BASE_URL }}/tweet",
-        "authentication": "none",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENTWEET_API_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"text\": {{ JSON.stringify($json.script) }} }",
-        "options": {
-          "timeout": 30000
-        }
+        "jsCode": "// X API v2 — post a single tweet via OAuth 1.0a\n// Env vars: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET\n\nconst crypto = require('crypto');\n\nconst credentials = {\n  apiKey: $env.X_API_KEY,\n  apiSecret: $env.X_API_SECRET,\n  accessToken: $env.X_ACCESS_TOKEN,\n  accessTokenSecret: $env.X_ACCESS_TOKEN_SECRET,\n};\n\nconst text = $input.item.json.script; // plain string\nconst X_TWEETS_URL = 'https://api.twitter.com/2/tweets';\n\nfunction percentEncode(value) {\n  return encodeURIComponent(value)\n    .replace(/!/g, '%21')\n    .replace(/'/g, '%27')\n    .replace(/\\(/g, '%28')\n    .replace(/\\)/g, '%29')\n    .replace(/\\*/g, '%2A');\n}\n\nfunction generateNonce() {\n  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';\n  let nonce = '';\n  for (let i = 0; i < 32; i++) {\n    nonce += chars.charAt(Math.floor(Math.random() * chars.length));\n  }\n  return nonce;\n}\n\nfunction buildAuthHeader(method, url, creds) {\n  const nonce = generateNonce();\n  const timestamp = Math.floor(Date.now() / 1000).toString();\n\n  const oauthParams = {\n    oauth_consumer_key: creds.apiKey,\n    oauth_nonce: nonce,\n    oauth_signature_method: 'HMAC-SHA1',\n    oauth_timestamp: timestamp,\n    oauth_token: creds.accessToken,\n    oauth_version: '1.0',\n  };\n\n  const paramString = Object.keys(oauthParams)\n    .sort()\n    .map(k => `${percentEncode(k)}=${percentEncode(oauthParams[k])}`)\n    .join('&');\n\n  const signatureBase = [\n    method.toUpperCase(),\n    percentEncode(url),\n    percentEncode(paramString),\n  ].join('&');\n\n  const signingKey = `${percentEncode(creds.apiSecret)}&${percentEncode(creds.accessTokenSecret)}`;\n\n  const signature = crypto\n    .createHmac('sha1', signingKey)\n    .update(signatureBase)\n    .digest('base64');\n\n  const allOAuth = { ...oauthParams, oauth_signature: signature };\n\n  return 'OAuth ' + Object.keys(allOAuth)\n    .sort()\n    .map(k => `${k}=\"${percentEncode(allOAuth[k])}\"`)\n    .join(', ');\n}\n\nconst authHeader = buildAuthHeader('POST', X_TWEETS_URL, credentials);\n\nconst response = await fetch(X_TWEETS_URL, {\n  method: 'POST',\n  headers: {\n    'Authorization': authHeader,\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({ text }),\n});\n\nconst data = await response.json();\n\nif (!response.ok) {\n  const msg = (data.errors && data.errors[0] && data.errors[0].message)\n    || data.detail\n    || data.title\n    || `X API error ${response.status}`;\n  throw new Error(msg);\n}\n\nreturn [{\n  json: {\n    id: data.data.id,\n    text: data.data.text,\n  }\n}];"
       }
     },
     {
@@ -249,21 +207,21 @@
       "main": [
         [
           {
-            "node": "HTTP Request - Post Thread",
+            "node": "Code - Post Thread",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "HTTP Request - Post Tweet",
+            "node": "Code - Post Tweet",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request - Post Thread": {
+    "Code - Post Thread": {
       "main": [
         [
           {
@@ -274,7 +232,7 @@
         ]
       ]
     },
-    "HTTP Request - Post Tweet": {
+    "Code - Post Tweet": {
       "main": [
         [
           {
@@ -326,6 +284,6 @@
     "callerPolicy": "workflowsFromSameOwner",
     "errorWorkflow": ""
   },
-  "versionId": "1",
+  "versionId": "2",
   "tags": ["phase-1", "x-bot"]
 }
