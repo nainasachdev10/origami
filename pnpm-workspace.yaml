@@ -1,3 +1,6 @@
 packages:
   - "apps/*"
-  - "packages/*"
+  - "packages/shared"
+  - "packages/publisher"
+  - "packages/trend-research"
+  - "packages/config/*"

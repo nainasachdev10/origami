@@ -15,7 +15,6 @@
     "@origami/shared": "workspace:*"
   },
   "devDependencies": {
-    "@origami/eslint-config": "workspace:*",
     "typescript": "^5.4.0",
     "@types/node": "^20.0.0"
   }
