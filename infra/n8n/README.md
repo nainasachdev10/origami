@@ -21,6 +21,12 @@ This directory contains the [Render Blueprint](https://render.com/docs/blueprint
 5. Click **Apply** — Render will provision `origami-n8n` (web service) and `origami-n8n-db` (Postgres) together.
 6. Fill in the **sync: false** environment variables when prompted (see the table in section 3 below).
 
+### Build failing with `isolated-vm` errors?
+
+If you see C++ compile errors mentioning `class_handle.h`, `GetIsolate`, or `GetAlignedPointerFromInternalField`, the build picked up too-new a Node version. n8n's native deps (`isolated-vm`) only compile against Node 20 / 22 LTS.
+
+Fix: in Render → service → **Environment**, set `NODE_VERSION=22.11.0` and click **Manual Deploy → Clear build cache & deploy**. Already pinned in `render.yaml` for new deploys.
+
 ---
 
 ## 2. Prevent Free-Tier Sleep

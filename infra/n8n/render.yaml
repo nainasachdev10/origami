@@ -6,6 +6,10 @@ services:
     buildCommand: npm install -g n8n
     startCommand: n8n start
     envVars:
+      # Pin Node 22 LTS. Render's default is the newest available, which breaks
+      # n8n's native deps (isolated-vm fails to build against Node 26 V8 API).
+      - key: NODE_VERSION
+        value: "22.11.0"
       - key: N8N_BASIC_AUTH_ACTIVE
         value: "true"
       - key: N8N_BASIC_AUTH_USER
