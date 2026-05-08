@@ -13,9 +13,13 @@ export async function loginWithEmail(formData: FormData) {
     return { error: 'Email and password are required.' }
   }
 
+  // Try sign in first; if user doesn't exist, sign them up
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) {
+  if (error?.message === 'Invalid login credentials') {
+    const { error: signUpError } = await supabase.auth.signUp({ email, password })
+    if (signUpError) return { error: signUpError.message }
+  } else if (error) {
     return { error: error.message }
   }
 
