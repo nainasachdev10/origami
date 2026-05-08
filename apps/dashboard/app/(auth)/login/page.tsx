@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '../../../lib/supabase/client'
-import { loginWithEmail, loginWithGoogle } from './actions'
+import { loginWithEmail, loginWithGoogle, resendConfirmationEmail } from './actions'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+  const [resendMessage, setResendMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -17,10 +16,25 @@ export default function LoginPage() {
 
     startTransition(async () => {
       const result = await loginWithEmail(formData)
-      if (result?.error) {
+      if (result?.needsConfirmation) {
+        setPendingEmail(result.email ?? (formData.get('email') as string))
+      } else if (result?.error) {
         setError(result.error)
       }
       // On success, loginWithEmail redirects server-side to /projects
+    })
+  }
+
+  function handleResend() {
+    if (!pendingEmail) return
+    setResendMessage(null)
+    startTransition(async () => {
+      const result = await resendConfirmationEmail(pendingEmail)
+      if (result?.error) {
+        setResendMessage(`Error: ${result.error}`)
+      } else {
+        setResendMessage('Confirmation email resent — check your inbox.')
+      }
     })
   }
 
@@ -34,6 +48,43 @@ export default function LoginPage() {
       }
       window.location.href = url
     })
+  }
+
+  if (pendingEmail) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+            <span className="text-xl font-bold text-primary-foreground">O</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Check your email</h1>
+          <p className="text-sm text-muted-foreground">
+            We sent a confirmation link to <span className="font-medium text-foreground">{pendingEmail}</span>.
+            Click it to activate your account and sign in.
+          </p>
+          {resendMessage && (
+            <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{resendMessage}</p>
+          )}
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={isPending}
+            className="text-sm text-primary underline-offset-4 hover:underline disabled:opacity-50"
+          >
+            {isPending ? 'Resending…' : "Didn't receive it? Resend"}
+          </button>
+          <div>
+            <button
+              type="button"
+              onClick={() => { setPendingEmail(null); setResendMessage(null) }}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

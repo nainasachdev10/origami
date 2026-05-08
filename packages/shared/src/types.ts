@@ -106,6 +106,7 @@ export interface Database {
           active?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
 
       project_platforms: {
@@ -133,6 +134,7 @@ export interface Database {
           credentials_encrypted?: Record<string, unknown> | null;
           enabled?: boolean;
         };
+        Relationships: [];
       };
 
       content_pieces: {
@@ -184,6 +186,7 @@ export interface Database {
           scheduled_for?: string | null;
           published_at?: string | null;
         };
+        Relationships: [];
       };
 
       content_analytics: {
@@ -225,6 +228,7 @@ export interface Database {
           reach?: number | null;
           fetched_at?: string;
         };
+        Relationships: [];
       };
 
       trend_cache: {
@@ -250,6 +254,7 @@ export interface Database {
           payload?: Record<string, unknown>;
           fetched_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
