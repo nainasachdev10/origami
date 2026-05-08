@@ -11,6 +11,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/webhooks/') ||
     pathname === '/'
 
+  if (pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
   if (isPublicPath) {
     return NextResponse.next({ request })
   }
