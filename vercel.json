@@ -1,0 +1,6 @@
+{
+  "buildCommand": "turbo run build --filter=@origami/dashboard...",
+  "outputDirectory": "apps/dashboard/.next",
+  "installCommand": "pnpm install",
+  "framework": "nextjs"
+}
