@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '../../../../../lib/supabase/server'
+import { RunNowButton } from '../../../../../components/RunNowButton'
 import type { ContentPiece, ContentStatus } from '@origami/shared/types'
 
 interface ContentPageProps {
@@ -101,6 +102,9 @@ export default async function ContentPage({ params }: ContentPageProps) {
         <p className="mt-2 max-w-xs text-sm text-muted-foreground">
           The pipeline will run at your scheduled time and generated content will appear here.
         </p>
+        <div className="mt-6">
+          <RunNowButton projectId={params.id} />
+        </div>
       </div>
     )
   }
@@ -111,6 +115,7 @@ export default async function ContentPage({ params }: ContentPageProps) {
         <p className="text-sm text-muted-foreground">
           {typedPieces.length} piece{typedPieces.length !== 1 ? 's' : ''} generated
         </p>
+        <RunNowButton projectId={params.id} />
       </div>
 
       {/* Content table */}

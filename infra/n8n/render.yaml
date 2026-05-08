@@ -18,6 +18,11 @@ services:
         value: "10000"
       - key: N8N_PROTOCOL
         value: "https"
+      # Allow workflows to read env vars via {{ $env.X }} expressions.
+      # n8n blocks this by default since 1.x; we configure all secrets via
+      # service env vars (not per-credential UI) so this MUST be false.
+      - key: N8N_BLOCK_ENV_ACCESS_IN_NODE
+        value: "false"
       - key: WEBHOOK_URL
         sync: false
         # Set to https://origami-n8n.onrender.com after deploy (or your custom domain)

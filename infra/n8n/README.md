@@ -65,6 +65,8 @@ After the deploy turns green:
 
 ## 4. Import Workflows
 
+> ⚠️ **Required first**: set `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` in the n8n service env vars (Render → service → Environment). Without this, every node that uses `{{ $env.X }}` fails with **"access to env vars denied"**. Already in `render.yaml`; if you deployed before this was added, set it manually and restart the service.
+
 Import in the numbered order below so that sub-workflow references resolve correctly.
 
 1. In n8n, go to **Settings > Import workflow** (or use the **+** button on the Workflows page and select **Import from file**).
@@ -73,13 +75,10 @@ Import in the numbered order below so that sub-workflow references resolve corre
 ```
 01-trend-research.json
 02-topic-selector.json
-03-content-generation.json
+03-script-writer-x.json
 04-quality-review.json
-05-approval-gate.json
-06-publishing-youtube.json
-06-publishing-instagram.json
-06-publishing-x.json
-07-analytics-collector.json
+05-approval-telegram.json
+06-publish-x.json
 master-pipeline.json        ← import last
 ```
 
@@ -99,6 +98,19 @@ After importing:
 3. Set the **Cron Expression** to match the `posting_schedule.cron` field of your first active project (e.g., `0 10 * * *` for 10:00 AM daily).
 4. For **multiple projects running on different schedules**, duplicate the master-pipeline workflow once per project and set each copy's Schedule Trigger independently. Pass the `project_id` as a static value in a **Set** node immediately after the trigger.
 5. Click **Activate** (toggle in the top-right) on each workflow you want live.
+
+### Manual trigger from the dashboard
+
+The `master-pipeline` also has a **Webhook Trigger** node at path `/webhook/trigger-pipeline`. The dashboard route `POST /api/trigger/[projectId]` calls this webhook so you can fire the pipeline for a single project without waiting for cron.
+
+Set these env vars in **Vercel** (the dashboard):
+
+| Var | Value |
+|---|---|
+| `N8N_WEBHOOK_BASE_URL` | `https://origami-n8n.onrender.com` (your n8n URL, no trailing slash) |
+| `N8N_API_KEY` | optional — only if you protect the webhook |
+
+The webhook URL n8n exposes is: `<N8N_WEBHOOK_BASE_URL>/webhook/trigger-pipeline`. Activate the master-pipeline workflow first so the webhook becomes live.
 
 ---
 

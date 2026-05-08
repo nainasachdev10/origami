@@ -19,6 +19,65 @@
       }
     },
     {
+      "id": "a1b2c3d4-9999-00b1-00b1-0000000000b1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 500],
+      "webhookId": "trigger-pipeline",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-pipeline",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-9999-00b2-00b2-0000000000b2",
+      "name": "HTTP Request - Get Single Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 500],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/projects",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $json.body.project_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,niche_keywords,brand_voice_prompt,content_style,posting_schedule,approval_mode"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
       "id": "a1b2c3d4-9999-0002-0002-000000000002",
       "name": "HTTP Request - Get Active Projects",
       "type": "n8n-nodes-base.httpRequest",
@@ -542,6 +601,28 @@
         [
           {
             "node": "HTTP Request - Get Active Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Single Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Single Project": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
             "type": "main",
             "index": 0
           }
